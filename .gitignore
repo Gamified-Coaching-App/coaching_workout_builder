@@ -1,0 +1,12 @@
+# Ignore virtual environment
+builder_01/
+
+#ignore data
+data/
+
+#ignore pycache
+__pycache__/
+
+.DS_Store/
+
+.vscode/
