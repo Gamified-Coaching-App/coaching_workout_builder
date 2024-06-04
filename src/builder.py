@@ -65,25 +65,26 @@ def create_training_plan(suggestion):
 
     Returns:
     training_plan (dict): A dictionary representing the 7-day training plan. Each day includes a running plan with warmup, 
-    main intervals, and cooldown, as well as strength training and alternative hours.
+                          main intervals, and cooldown, as well as strength training and alternative hours.
 
     The function iterates over each day of the week, and for each day, it creates a running plan 
     based on the remaining kilometers for the day. The running plan includes a warmup, main intervals, 
     and a cooldown. The main intervals are created in a loop until the remaining kilometers for the day 
-    are exhausted. Each interval includes an effort and recovery phase. If the remaining kilometers are 
-    not enough for an interval, the interval is not included in the plan. The function also includes 
-    strength training and alternative hours in the plan for each day.
+    or the remaining kilometers for Z5 are exhausted. Each interval includes an effort and recovery phase. 
+    If the remaining kilometers are not enough for an interval, the interval is not included in the plan. 
+    The function also includes strength training and alternative hours in the plan for each day.
     """
+    
     interval_type = 'default'
     training_plan = {}
 
     for i in range(7):
-        # Get the remaining km for the day
-        remaining_km = suggestion['total km'][i]
+        remaining_km = suggestion['total km'][i]  # Get the remaining km for the day
 
         if remaining_km < DEFAULT_WARMUP_KM:
             continue
 
+        # Add warumup and cooldown to the plan
         running_plan = {'session_1': {'warmup': {'Z2': DEFAULT_WARMUP_KM}, 'main': {}}}
         remaining_km -= running_plan['session_1']['warmup']['Z2']
 
@@ -91,28 +92,20 @@ def create_training_plan(suggestion):
             running_plan['session_1']['cooldown'] = {'Z2': min(DEFAULT_COOL_DOWN_KM, remaining_km)}
             remaining_km -= running_plan['session_1']['cooldown']['Z2']
 
+        # Add Zone 5 intervals to the plan
         interval_number = 1
+        remaining_km_zone5 = suggestion['km Z5'][i]
+        effort_key = list(INTERVALS[interval_type]['effort'].keys())[0]
+        recovery_key = list(INTERVALS[interval_type]['recovery'].keys())[0]
+        km_effort = INTERVALS[interval_type]['effort'][effort_key]
+        km_recovery = INTERVALS[interval_type]['recovery'][recovery_key]
         
-        while remaining_km > 0:
-            # Initialize the interval list
-            running_plan['session_1']['main'][f'interval_{interval_number}'] = []
-            effort_key = list(INTERVALS[interval_type]['effort'].keys())[0]
-            recovery_key = list(INTERVALS[interval_type]['recovery'].keys())[0]
-            
-            # Check if the remaining km is enough for an effort interval
-            if remaining_km >= INTERVALS[interval_type]['effort'][effort_key]:
-                running_plan['session_1']['main'][f'interval_{interval_number}'].append({effort_key: INTERVALS[interval_type]['effort'][effort_key]})
-                remaining_km -= INTERVALS[interval_type]['effort'][effort_key]
-                
-            # Check if the remaining km is enough for a recovery interval
-            if remaining_km >= INTERVALS[interval_type]['recovery'][recovery_key]:
-                running_plan['session_1']['main'][f'interval_{interval_number}'].append({recovery_key: INTERVALS[interval_type]['recovery'][recovery_key]})
-                remaining_km -= INTERVALS[interval_type]['recovery'][recovery_key]
-
-            if not running_plan['session_1']['main'][f'interval_{interval_number}']:
-                del running_plan['session_1']['main'][f'interval_{interval_number}']
-                break
-
+        while remaining_km_zone5 >= km_effort and remaining_km >= km_effort + km_recovery:
+            running_plan['session_1']['main'][f'interval_{interval_number}'] = [] # Initialize the interval list
+            running_plan['session_1']['main'][f'interval_{interval_number}'].append({effort_key: km_effort})
+            running_plan['session_1']['main'][f'interval_{interval_number}'].append({recovery_key: km_recovery})
+            remaining_km -= (km_effort + km_recovery)
+            remaining_km_zone5 -= km_effort
             interval_number += 1
 
         day_plan = {
